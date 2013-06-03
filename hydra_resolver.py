@@ -19,7 +19,6 @@ from twisted.python import log
 class CustomResolver(Resolver):
     def __init__(self, flag=False, servers=[('8.8.8.8', 53)], timeout=(1, 3, 7, 11)):
         Resolver.__init__(self, servers=servers, timeout=timeout)
-        super(Resolver, self).__init__(servers=servers, timeout=timeout)
         self.flag = flag
         self.servers = servers
 
