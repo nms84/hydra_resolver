@@ -1,3 +1,6 @@
+#Notice
+cp tld_nameservers.pkl into /usr/local/share/
+
 # hydra_resolver
 
 

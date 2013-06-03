@@ -24,7 +24,7 @@ class CustomResolver(Resolver):
 
         # load TLD nameservers
         from pickle import load
-        self.tld_servers = load(open('tld_nameservers.pkl'))
+        self.tld_servers = load(open('/usr/local/share/tld_nameservers.pkl'))
 
     def queryUDP(self, queries, timeout = None):
         """ Make a number of DNS queries via UDP.
