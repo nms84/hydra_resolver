@@ -17,14 +17,15 @@ from twisted.names.client import Resolver
 from twisted.python import log
 
 class CustomResolver(Resolver):
-    def __init__(self, flag=False, servers=[('8.8.8.8', 53)], timeout=(1, 3, 7, 11)):
+    def __init__(self, flag=False, servers=[('8.8.8.8', 53)], timeout=(2, 3, 5, 10)):
         Resolver.__init__(self, servers=servers, timeout=timeout)
         self.flag = flag
         self.servers = servers
 
         # load TLD nameservers
-        from pickle import load
-        self.tld_servers = load(open('/usr/local/share/tld_nameservers.pkl'))
+        if self.flag:
+            from pickle import load
+            self.tld_servers = load(open('/usr/local/share/tld_nameservers.pkl'))
 
     def queryUDP(self, queries, timeout = None):
         """ Make a number of DNS queries via UDP.
@@ -158,8 +159,8 @@ class HydraResolver(object):
             import pickle
             with open('/tmp/got_failure', 'w') as f:
                 pickle.dump(failure, f)
-            print failure.printTraceback()
-            exit()
+            #print failure.printTraceback()
+            #exit()
             # log.err(failure)
     
     
