@@ -17,11 +17,14 @@ Hydra isn't far behind [adns](https://code.google.com/p/adns-python/) in terms o
 By default, hydra will attempt to retrieve all A records from a list of hostnames. 
 
 ```
-from hydra_resolver import resolve_list
+from hydra_resolver import HydraResolver
 from pprint import pprint 
 
 hostnames = ['twistedmatrix.com', 'google.com', 'facebook.com', 'thedomainthatdoesntexist.com']
-result = resolve_list(hostnames)
+
+hydra = HydraResolver()
+result = hydra.resolve_list(hostnames)
+
 pprint(result)
 ```
 
@@ -49,12 +52,15 @@ Gives you:
 If you want to get other types of records, simply pass the query type into `resolve_list` like this: 
 
 ```
-from hydra_resolver import resolve_list
+from hydra_resolver import HydraResolver
 from pprint import pprint 
 
 hostnames = ['twistedmatrix.com', 'google.com', 'facebook.com', 'thedomainthatdoesntexist.com']
+
+hydra = HydraResolver()
+
 # you can pass most valid query types to resolve_list
-result = resolve_list(hostnames, 'SOA')
+result = hydra.resolve_list(hostnames, 'SOA')
 pprint(result)
 ```
 
