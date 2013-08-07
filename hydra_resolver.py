@@ -48,12 +48,11 @@ class CustomResolver(Resolver):
             query = queries[0]
             hostname = query.name.name
             tld = hostname.split('.')[-1]
-
-            addresses = self.tld_servers[tld.lower()]
+            try:
+                addresses = self.tld_servers[tld.lower()]
+            except KeyError as e:
+                log.err("TLD {} not found in tld_servers.pkl".format(tld))
   
-        if not addresses:
-            return defer.fail(IOError("No domain name servers available"))
-        
         # choose a random server from the list 
         used = choice(addresses)
         addresses.remove(used)
@@ -63,10 +62,10 @@ class CustomResolver(Resolver):
         return d
 
 class HydraResolver(object):
-    def __init__(self, flag=False, servers=[('8.8.8.8', 53)]):
+    def __init__(self, flag=False, servers=[('8.8.8.8', 53), ('8.8.4.4', 53)], timeout=(1, 3, 5, 7)):
         
         # custom resolver class that can issue queries directly to the TLD nameserver
-        self.resolver = CustomResolver(flag=flag, servers=servers)
+        self.resolver = CustomResolver(flag=flag, servers=servers, timeout=timeout)
     
         # rfc 2136 gives us a mapping for opcode value -> mneumonic 
         self.rcode = defaultdict(lambda: 'UNRECOGNIZED_RCODE')
@@ -150,41 +149,46 @@ class HydraResolver(object):
             # map the response code to a meaningful message 
             self.results[hostname]['status'] = self.rcode[msg.rCode]
         elif (isinstance(failure.value, tn.error.DNSQueryTimeoutError)):
-            import pickle
-            with open('/tmp/timeout_error', 'w') as f:
-                pickle.dump(failure, f)
-            print failure.printTraceback()
+            #import pickle
+            #with open('/tmp/timeout_error', 'w') as f:
+            #    pickle.dump(failure, f)
+            #print failure.printTraceback()
+            pass
         else:
             # got some other error type of error
-            import pickle
-            with open('/tmp/got_failure', 'w') as f:
-                pickle.dump(failure, f)
+            #import pickle
+            #with open('/tmp/got_failure', 'w') as f:
+            #    pickle.dump(failure, f)
             #print failure.printTraceback()
             #exit()
             # log.err(failure)
+            pass
     
     
-    def resolve_list(self, hostname_list, qtype='A'):
+    def resolve_list(self, hostname_list, qtype='A', tokens=100):
         ''' Resolves a list of hostnames asynchronously using Twisted
             @param: hostname_list, list of hostnames (str)
             @param: nameservers, a list of nameservers you wish to query
             @return: a dictionary where the keys are hostnames and the values
                      are lists of IP addresses (dotted quad format)
         '''
-        deferreds = []
+        jobs = []
+        # a semaphore to limit the number of concurrent jobs
+        # if token=100 then job 101 will wait until a previous job completes
+        sem = defer.DeferredSemaphore(tokens)
         
         # create a deferred for each hostname
         for host in hostname_list:
             self.results[host] = {}
             self.results[host]['status'] = 'TIMEOUT'
-            d = self.do_lookup(host, qtype.upper())
+            d = sem.run(self.do_lookup, host, qtype.upper())
             d.addCallbacks(self.got_result, self.got_failure)
-            deferreds.append(d)
+            jobs.append(d)
     
-        # create DeferredList, allow errors
-        dlist = defer.DeferredList(deferreds, consumeErrors=False)
+        # gather the results 
+        d = defer.gatherResults(jobs, consumeErrors=False)
         # stop the reactor when we're done
-        dlist.addCallback(lambda fin: reactor.stop())
+        d.addCallback(lambda fin: reactor.stop())
     
         reactor.run()
     
