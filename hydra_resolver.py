@@ -42,7 +42,7 @@ class CustomResolver(Resolver):
         if timeout is None:
             timeout = self.timeout
 
-        addresses = [('8.8.8.8', 53)]
+        addresses = list(self.servers)
 
         if self.flag:
             query = queries[0]
@@ -62,7 +62,7 @@ class CustomResolver(Resolver):
         return d
 
 class HydraResolver(object):
-    def __init__(self, flag=False, servers=[('8.8.8.8', 53), ('8.8.4.4', 53)], timeout=(1, 3, 5, 7)):
+    def __init__(self, flag=False, servers=[('8.8.8.8', 53)], timeout=(1, 3, 5, 7)):
         
         # custom resolver class that can issue queries directly to the TLD nameserver
         self.resolver = CustomResolver(flag=flag, servers=servers, timeout=timeout)
@@ -84,7 +84,7 @@ class HydraResolver(object):
         self.results = {}
     
     @defer.inlineCallbacks
-    def do_lookup(self, hostname, type='A'):
+    def _do_lookup(self, hostname, type='A'):
         ''' Perform a DNS lookup on a hostname and defer the result
             @param: hostname, the hostname to lookup (str)
             @param: type, the type of query to make (A, NS, ANY, MX, etc)
@@ -96,8 +96,8 @@ class HydraResolver(object):
         response = yield getattr(self.resolver, self.query_type[type])(hostname)
         defer.returnValue((hostname, response))
     
-    def got_result(self, result):
-        ''' Callback that takes the response from do_lookup and transforms each answer
+    def _got_result(self, result):
+        ''' Callback that takes the response from _do_lookup and transforms each answer
             into a dictionary and places them into a list. The list is then entered 
             into a class level dictionary. 
             @param: result, a two-tuple of hostname (str) and RRHeaders ([Answer], [Auth], [Add'l])
@@ -116,25 +116,25 @@ class HydraResolver(object):
             self.results[hostname]['answer'] = []
             # for answer in RRHeader
             for rr in answer_section:
-                self.results[hostname]['answer'].append(self.jsonify(rr))
+                self.results[hostname]['answer'].append(self._jsonify(rr))
     
         if len(authority_section) > 0:
             self.results[hostname]['authority'] = []
             # for answer in RRHeader
             for rr in authority_section:
-                self.results[hostname]['authority'].append(self.jsonify(rr))
+                self.results[hostname]['authority'].append(self._jsonify(rr))
     
         if len(additional_section) > 0:
             self.results[hostname]['additional'] = []
             # for answer in RRHeader
             for rr in additional_section:
-                self.results[hostname]['additional'].append(self.jsonify(rr))
+                self.results[hostname]['additional'].append(self._jsonify(rr))
     
         if len(answer_section) == 0 and len(authority_section) == 0 and len(additional_section) == 0:
             self.results[hostname]['status'] = 'NO_ANSWER'
     
-    def got_failure(self, failure):
-        ''' Errback for do_lookup, rcodes like NXDOMAIN and SERVFAIL
+    def _got_failure(self, failure):
+        ''' Errback for _do_lookup, rcodes like NXDOMAIN and SERVFAIL
             will throw a DomainError, which contains the resulting dns.Message.
             We can retrieve the rcode from the dns.Message to determine the status.
             @param: failure, twisted.failure (wrapper for an Exception)
@@ -157,15 +157,13 @@ class HydraResolver(object):
         else:
             # got some other error type of error
             #import pickle
-            #with open('/tmp/got_failure', 'w') as f:
+            #with open('/tmp/_got_failure', 'w') as f:
             #    pickle.dump(failure, f)
             #print failure.printTraceback()
             #exit()
-            # log.err(failure)
-            pass
+            pass    
     
-    
-    def resolve_list(self, hostname_list, qtype='A', tokens=100):
+    def resolve_list(self, hostname_list, qtype='A', tokens=300):
         ''' Resolves a list of hostnames asynchronously using Twisted
             @param: hostname_list, list of hostnames (str)
             @param: nameservers, a list of nameservers you wish to query
@@ -176,15 +174,14 @@ class HydraResolver(object):
         # a semaphore to limit the number of concurrent jobs
         # if token=100 then job 101 will wait until a previous job completes
         sem = defer.DeferredSemaphore(tokens)
-        
         # create a deferred for each hostname
         for host in hostname_list:
             self.results[host] = {}
             self.results[host]['status'] = 'TIMEOUT'
-            d = sem.run(self.do_lookup, host, qtype.upper())
-            d.addCallbacks(self.got_result, self.got_failure)
+            d = sem.run(self._do_lookup, host, qtype.upper())
+            d.addCallbacks(self._got_result, self._got_failure)
             jobs.append(d)
-    
+
         # gather the results 
         d = defer.gatherResults(jobs, consumeErrors=False)
         # stop the reactor when we're done
@@ -194,7 +191,7 @@ class HydraResolver(object):
     
         return self.results
     
-    def jsonify(self, record):
+    def _jsonify(self, record):
         ''' Takes an RRHeader and creates a dict with it's attributes
             @param: record, an RRHeader object
             @return: data, a dict representing the RRHeader's data
@@ -204,17 +201,17 @@ class HydraResolver(object):
     
         # if rr contains A record
         if isinstance(record.payload, tn.dns.Record_A):
-            self.jsonify_A(record.payload, data)
+            self._jsonify_A(record.payload, data)
         # if record contains AAAA record
         elif isinstance(record.payload, tn.dns.Record_AAAA):
-            self.jsonify_AAAA(record.payload, data)
+            self._jsonify_AAAA(record.payload, data)
         # else record contains different type of record
         else:
-            self.jsonify_default(record.payload, data)
+            self._jsonify_default(record.payload, data)
     
         return data
     
-    def jsonify_default(self, payload, data):
+    def _jsonify_default(self, payload, data):
         data['type'] = payload.fancybasename
     
         for k,v in payload.__dict__.items():
@@ -223,7 +220,7 @@ class HydraResolver(object):
             else:
                 data[k] = v
     
-    def jsonify_A(self, payload, data):
+    def _jsonify_A(self, payload, data):
         ''' Takes a 'Record_A' object and adds it's data to the passed 'data' dict
             @param: payload, twisted.names.dns.Record_A object
             @param: data, dict containing RRHeader data
@@ -232,7 +229,7 @@ class HydraResolver(object):
         data['ttl'] = payload.ttl
         data['address'] = payload.dottedQuad()
     
-    def jsonify_AAAA(self, payload, data):
+    def _jsonify_AAAA(self, payload, data):
         ''' Takes a 'Record_AAAA' object and adds it's data to the passed 'data' dict
             @param: payload, twisted.names.dns.Record_A object
             @param: data, dict containing RRHeader data
