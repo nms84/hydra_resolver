@@ -108,6 +108,25 @@ Gives you:
 }
 ```
 
+### Wrapper
+
+Resolving a list of domains with HydraResolver starts and then stops the Twisted reactor. Restarting a reactor is not supported, so I've included a wrapper in the package. 
+
+```
+from hydra_resolver import hydra_wrapper
+result = hydra_wrapper(host_list)
+```
+
+The wrapper runs each batch resolver job in a separate process, so you can call resolve_list() as often as you like. You may also specify all the usual parameters:
+
+resolve_list(hostname_list, qtype='A', tokens=300, flag=False, servers=[('8.8.8.8', 53)], timeout=(1, 3, 5, 7))
+
+* qtype: record type to query for ('A', 'ANY', 'NS', 'TEXT', 'SOA', 'AAAA' are supported)
+* tokens: slots on the semaphore, allows N number of concurrent requests
+* flag: set to True if you want to query the official TLD nameserver
+* servers: which nameservers to query
+* timeout: timeout sequence, set fewer/lower values if you are need fast results and are willing to sacrifice accuracy
+
 ### Dependencies
 
 [Twisted](http://twistedmatrix.com/trac/wiki/Downloads) is installed by default on many operating systems, but I'd recommend fetching and building the latest stable versions of [Twisted](http://twistedmatrix.com/Releases/Twisted/13.0/Twisted-13.0.0.tar.bz2), [Twisted-Core](http://twistedmatrix.com/Releases/Core/13.0/TwistedCore-13.0.0.tar.bz2), and [Twisted-Names](http://twistedmatrix.com/Releases/Names/13.0/TwistedNames-13.0.0.tar.bz2). Twisted was at version 13 when I wrote this doc. [Click here for information on how to get Twisted installed on your OS](http://twistedmatrix.com/trac/wiki/Downloads).
