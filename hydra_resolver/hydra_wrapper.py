@@ -23,3 +23,7 @@ def resolve_list(hostname_list, qtype='A', tokens=300, flag=False, servers=[('8.
     result = parent.recv()
     p.join()
     return result
+
+if __name__ == "__main__":
+    hh = ["nic.toys", "nic.tr", "code.ninja"]
+    print resolve_list(hh, flag=True)

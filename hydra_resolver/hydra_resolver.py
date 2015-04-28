@@ -5,12 +5,15 @@
 #--- @author: Nick Summerlin
 #--- @last_modified: 2013-06-02
 
+import pkg_resources
+
 import twisted.names as tn
 
 from sys import exit
 from random import choice
 from socket import inet_ntop, AF_INET6
 from collections import defaultdict
+from pickle import load
 
 from twisted.internet import reactor, defer
 from twisted.names.client import Resolver
@@ -24,10 +27,13 @@ class CustomResolver(Resolver):
 
         # load TLD nameservers
         if self.flag:
-            from pickle import load
-            self.tld_servers = load(open('/usr/local/share/tld_nameservers.pkl'))
+            if pkg_resources.resource_exists('hydra_resolver', 'data/tld_nameservers.pkl'):
+                data = pkg_resources.resource_stream('hydra_resolver', 'data/tld_nameservers.pkl')
+                self.tld_servers = load(data)
+            else:
+                raise EnvironmentError('Unable to load tld_nameservers.pkl')
 
-    def queryUDP(self, queries, timeout = None):
+    def queryUDP(self, queries, timeout=None):
         """ Make a number of DNS queries via UDP.
             @type queries: A C{list} of C{dns.Query} instances
             @param queries: The queries to make.
@@ -149,19 +155,17 @@ class HydraResolver(object):
             # map the response code to a meaningful message 
             self.results[hostname]['status'] = self.rcode[msg.rCode]
         elif (isinstance(failure.value, tn.error.DNSQueryTimeoutError)):
-            #import pickle
-            #with open('/tmp/timeout_error', 'w') as f:
-            #    pickle.dump(failure, f)
-            #print failure.printTraceback()
-            pass
+            import pickle
+            with open('/tmp/timeout_error', 'w') as f:
+                pickle.dump(failure, f)
+            print failure.printTraceback()
         else:
             # got some other error type of error
-            #import pickle
-            #with open('/tmp/_got_failure', 'w') as f:
-            #    pickle.dump(failure, f)
-            #print failure.printTraceback()
+            import pickle
+            with open('/tmp/_got_failure', 'w') as f:
+                pickle.dump(failure, f)
+            print failure.printTraceback()
             #exit()
-            pass    
     
     def resolve_list(self, hostname_list, qtype='A', tokens=300):
         ''' Resolves a list of hostnames asynchronously using Twisted

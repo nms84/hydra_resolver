@@ -1,4 +1,4 @@
-#Notice
+# Notice
 cp tld_nameservers.pkl into /usr/local/share/
 
 # hydra_resolver
@@ -12,7 +12,7 @@ If you want pure speed, [adns](https://code.google.com/p/adns-python/) is faster
 
 Hydra isn't far behind [adns](https://code.google.com/p/adns-python/) in terms of speed and it's extremely easy to use. 
 
-###Examples
+### Examples
 
 By default, hydra will attempt to retrieve all A records from a list of hostnames. 
 
@@ -119,13 +119,13 @@ result = hydra_wrapper(host_list)
 
 The wrapper runs each batch resolver job in a separate process, so you can call resolve_list() as often as you like. You may also specify all the usual parameters:
 
-resolve_list(hostname_list, qtype='A', tokens=300, flag=False, servers=[('8.8.8.8', 53)], timeout=(1, 3, 5, 7))
+***resolve_list**(hostname_list, qtype='A', tokens=300, flag=False, servers=[('8.8.8.8', 53)], timeout=(1, 3, 5, 7))*
 
-* qtype: record type to query for ('A', 'ANY', 'NS', 'TEXT', 'SOA', 'AAAA' are supported)
-* tokens: slots on the semaphore, allows N number of concurrent requests
-* flag: set to True if you want to query the official TLD nameserver
-* servers: which nameservers to query
-* timeout: timeout sequence, set fewer/lower values if you are need fast results and are willing to sacrifice accuracy
+* **qtype**: record type to query for ('A', 'ANY', 'NS', 'TEXT', 'SOA', 'AAAA' are supported)
+* **tokens**: slots on the semaphore, allows N number of concurrent requests
+* **flag**: set to True if you want to query the official TLD nameserver
+* **servers**: which nameservers to query
+* **timeout**: timeout sequence, set fewer/lower values if you are need fast results and are willing to sacrifice accuracy
 
 ### Dependencies
 
